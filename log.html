@@ -6,73 +6,24 @@
 <title>Sistema de Estoque - Firebase</title>
 
 <style>
-/* MESMO CSS QUE VOCÊ TINHA */
-body{
-    margin:0;
-    font-family: Arial, sans-serif;
-    background: linear-gradient(135deg,#6a0dad,#00c896,#007bff);
-    min-height:100vh;
-}
-.container{
-    background:white;
-    margin:20px;
-    padding:20px;
-    border-radius:30px;
-    box-shadow:0 0 15px rgba(0,0,0,0.2);
-}
+body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(135deg,#6a0dad,#00c896,#007bff);min-height:100vh;}
+.container{background:white;margin:20px;padding:20px;border-radius:30px;box-shadow:0 0 15px rgba(0,0,0,0.2);}
 h2,h3{color:#6a0dad;text-align:center;}
 .hidden{display:none;}
-input, button, select{
-    width:100%;
-    padding:12px;
-    margin-top:10px;
-    font-size:16px;
-    border-radius:25px;
-    border:none;
-}
-input, select{border:2px solid #6a0dad;}
+input,button,select{width:100%;padding:12px;margin-top:10px;font-size:16px;border-radius:25px;border:none;}
+input,select{border:2px solid #6a0dad;}
 button{background:#6a0dad;color:white;font-weight:bold;}
 button:hover{background:#00c896;}
-.products{
-    display:grid;
-    grid-template-columns:repeat(2,1fr);
-    gap:15px;
-    max-height:300px;
-    overflow-y:auto;
-    margin-top:15px;
-}
-.product{
-    border:3px solid #007bff;
-    border-radius:25px 5px 25px 5px;
-    padding:15px;
-    text-align:center;
-    cursor:pointer;
-    color:#6a0dad;
-    font-weight:bold;
-}
-.product.selected{
-    background:#e6fff6;
-    border-color:#00c896;
-}
-table{
-    width:100%;
-    border-collapse:collapse;
-    margin-top:10px;
-}
-th{
-    background:#6a0dad;
-    color:white;
-}
-td,th{
-    border:1px solid #ccc;
-    padding:8px;
-    text-align:center;
-}
+.products{display:grid;grid-template-columns:repeat(2,1fr);gap:15px;max-height:300px;overflow-y:auto;margin-top:15px;}
+.product{border:3px solid #007bff;border-radius:25px 5px 25px 5px;padding:15px;text-align:center;cursor:pointer;color:#6a0dad;font-weight:bold;}
+.product.selected{background:#e6fff6;border-color:#00c896;}
+table{width:100%;border-collapse:collapse;margin-top:10px;}
+th{background:#6a0dad;color:white;}
+td,th{border:1px solid #ccc;padding:8px;text-align:center;}
 </style>
 </head>
 <body>
 
-<!-- MESMAS TELAS -->
 <div class="container" id="tela1">
     <h2>Digite seu nome completo</h2>
     <input id="nome" placeholder="Nome completo">
@@ -101,23 +52,18 @@ td,th{
 
 <div class="container hidden" id="telaEditar">
     <h2>Editar Estoque</h2>
-
     <h3>Alterar quantidade</h3>
     <select id="produtoSelecionado"></select>
     <input type="number" id="novaQtd" placeholder="Nova quantidade">
     <button onclick="salvarEdicao()">Salvar Alteração</button>
-
     <hr>
-
     <h3>Adicionar novo produto</h3>
     <input id="novoProdutoNome" placeholder="Nome do produto">
     <input type="number" id="novoProdutoQtd" placeholder="Quantidade inicial">
     <button onclick="adicionarProduto()">Adicionar Produto</button>
-
     <h3>Remover produto</h3>
     <select id="produtoRemover"></select>
     <button onclick="removerProduto()">Remover Produto</button>
-
     <button onclick="cancelarEdicao()">Voltar</button>
 </div>
 
@@ -137,74 +83,69 @@ td,th{
     <button onclick="voltarMov()">Voltar</button>
 </div>
 
-<!-- FIREBASE -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-app.js";
-import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-database.js";
+import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-database.js";
 
-window.onload = function(){
-
-// CONFIGURAÇÃO FIREBASE (SUBSTITUA PELOS SEUS DADOS)
+// Firebase config
 const firebaseConfig = {
-    apiKey: "SUA_API_KEY",
-    authDomain: "SEU_PROJETO.firebaseapp.com",
-    databaseURL: "https://SEU_PROJETO.firebaseio.com",
-    projectId: "SEU_PROJETO",
-    storageBucket: "SEU_PROJETO.appspot.com",
-    messagingSenderId: "SENDER_ID",
-    appId: "APP_ID"
+  apiKey: "AIzaSyC8_F1oQ5-GTsmYtvw9NLjQFTohaFye8QQ",
+  authDomain: "log-estoque.firebaseapp.com",
+  databaseURL: "https://log-estoque-default-rtdb.firebaseio.com/",
+  projectId: "log-estoque",
+  storageBucket: "log-estoque.firebasestorage.app",
+  messagingSenderId: "289675710071",
+  appId: "1:289675710071:web:176f2145de1076cbd20072",
+  measurementId: "G-JLBSJPKG3E"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// REFERÊNCIAS FIREBASE
 const produtosRef = ref(db, 'produtos');
 const movRef = ref(db, 'movimentacoes');
 
-// VARIÁVEIS
-let usuario="";
-let produtos=[];
-let selecionados=[];
-let movimentacoes=[];
+let usuario = "";
+let produtos = [];
+let selecionados = [];
+let movimentacoes = [];
 
-// SINCRONIZAÇÃO REALTIME COM FIREBASE
+// Carregar produtos do Firebase ou criar lista inicial
 onValue(produtosRef, snapshot => {
-    produtos = snapshot.val() || [
-        {nome:"Mouse",qtd:10},{nome:"Teclado",qtd:8},{nome:"Monitor",qtd:5},
-        {nome:"Notebook",qtd:3},{nome:"Headset",qtd:7},{nome:"Headset de treinamento",qtd:7},
-        {nome:"Cabo VGA",qtd:15},{nome:"Cabo de Força",qtd:20},{nome:"Fonte Dell",qtd:5},
-        {nome:"Fonte HP",qtd:5},{nome:"Fonte Lenovo",qtd:5},{nome:"Desktop Dell",qtd:4},
-        {nome:"Desktop HP",qtd:4},{nome:"Desktop Lenovo",qtd:4},{nome:"CPU Dell",qtd:6},
-        {nome:"CPU HP",qtd:6},{nome:"CPU Lenovo",qtd:6}
-    ]; // fallback caso não exista no DB
+    if(snapshot.exists()){
+        produtos = snapshot.val();
+    } else {
+        produtos = [
+            {nome:"Mouse",qtd:10},{nome:"Teclado",qtd:8},{nome:"Monitor",qtd:5},
+            {nome:"Notebook",qtd:3},{nome:"Headset",qtd:7},{nome:"Headset de treinamento",qtd:7},
+            {nome:"Cabo VGA",qtd:15},{nome:"Cabo de Força",qtd:20},{nome:"Fonte Dell",qtd:5},
+            {nome:"Fonte HP",qtd:5},{nome:"Fonte Lenovo",qtd:5},{nome:"Desktop Dell",qtd:4},
+            {nome:"Desktop HP",qtd:4},{nome:"Desktop Lenovo",qtd:4},{nome:"CPU Dell",qtd:6},
+            {nome:"CPU HP",qtd:6},{nome:"CPU Lenovo",qtd:6}
+        ];
+        set(produtosRef, produtos);
+    }
     carregarProdutos();
     atualizarTabela();
 });
 
-// Movimentações
+// Carregar movimentações
 onValue(movRef, snapshot => {
     movimentacoes = snapshot.val() || [];
 });
 
-// FUNÇÕES PARA ATUALIZAR FIREBASE
-function salvarProdutosFirebase(){
-    set(produtosRef, produtos);
-}
-
+// Funções de salvar no Firebase
+function salvarProdutosFirebase(){ set(produtosRef, produtos); }
 function registrarMovFirebase(acao,produto,qtd,obs){
-    let data=new Date().toLocaleString();
+    let data = new Date().toLocaleString();
     movimentacoes.push({usuario,produto,acao,qtd,obs,data});
     set(movRef, movimentacoes);
 }
 
-// ---- SOBREESCREVENDO FUNÇÕES ORIGINAIS PARA FIREBASE ----
+// --- Funções do seu sistema ---
 window.continuar = function(){
     usuario=document.getElementById("nome").value;
-    if(usuario==""){
-        alert("Digite seu nome!");
-        return;
-    }
+    if(usuario==""){ alert("Digite seu nome!"); return; }
     tela1.classList.add("hidden");
     tela2.classList.remove("hidden");
     document.getElementById("usuario").innerText="Usuário: "+usuario;
@@ -355,7 +296,6 @@ window.verMovimentacoes = function(){
 window.voltarMov = function(){ telaMov.classList.add("hidden"); tela2.classList.remove("hidden"); }
 window.voltar = function(){ tela3.classList.add("hidden"); tela2.classList.remove("hidden"); }
 
-} // fim window.onload
 </script>
 </body>
 </html>
