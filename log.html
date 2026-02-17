@@ -6,6 +6,7 @@
 <title>Sistema de Estoque - Firebase</title>
 
 <style>
+/* MESMO CSS QUE VOCÊ TINHA */
 body{
     margin:0;
     font-family: Arial, sans-serif;
@@ -30,11 +31,7 @@ input, button, select{
     border:none;
 }
 input, select{border:2px solid #6a0dad;}
-button{
-    background:#6a0dad;
-    color:white;
-    font-weight:bold;
-}
+button{background:#6a0dad;color:white;font-weight:bold;}
 button:hover{background:#00c896;}
 .products{
     display:grid;
@@ -75,6 +72,7 @@ td,th{
 </head>
 <body>
 
+<!-- MESMAS TELAS -->
 <div class="container" id="tela1">
     <h2>Digite seu nome completo</h2>
     <input id="nome" placeholder="Nome completo">
@@ -139,13 +137,15 @@ td,th{
     <button onclick="voltarMov()">Voltar</button>
 </div>
 
-<!-- Firebase SDK -->
+<!-- FIREBASE -->
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-app.js";
-  import { getDatabase, ref, set, get, onValue, push } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-database.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-app.js";
+import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-database.js";
 
-  // Substitua pelas suas credenciais do Firebase
-  const firebaseConfig = {
+window.onload = function(){
+
+// CONFIGURAÇÃO FIREBASE (SUBSTITUA PELOS SEUS DADOS)
+const firebaseConfig = {
     apiKey: "SUA_API_KEY",
     authDomain: "SEU_PROJETO.firebaseapp.com",
     databaseURL: "https://SEU_PROJETO.firebaseio.com",
@@ -153,220 +153,209 @@ td,th{
     storageBucket: "SEU_PROJETO.appspot.com",
     messagingSenderId: "SENDER_ID",
     appId: "APP_ID"
-  };
+};
 
-  const app = initializeApp(firebaseConfig);
-  const db = getDatabase(app);
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
 
-  let usuario="";
-  let produtos=[];
-  let selecionados=[];
-  let movimentacoes=[];
+// REFERÊNCIAS FIREBASE
+const produtosRef = ref(db, 'produtos');
+const movRef = ref(db, 'movimentacoes');
 
-  // Carregar produtos e movimentações do Firebase em tempo real
-  const produtosRef = ref(db, 'produtos');
-  onValue(produtosRef, (snapshot) => {
-      produtos = snapshot.val() || [];
-      carregarProdutosTela2();
-      atualizarTabela();
-  });
+// VARIÁVEIS
+let usuario="";
+let produtos=[];
+let selecionados=[];
+let movimentacoes=[];
 
-  const movRef = ref(db, 'movimentacoes');
-  onValue(movRef, (snapshot)=>{
-      movimentacoes = snapshot.val() || [];
-  });
+// SINCRONIZAÇÃO REALTIME COM FIREBASE
+onValue(produtosRef, snapshot => {
+    produtos = snapshot.val() || [
+        {nome:"Mouse",qtd:10},{nome:"Teclado",qtd:8},{nome:"Monitor",qtd:5},
+        {nome:"Notebook",qtd:3},{nome:"Headset",qtd:7},{nome:"Headset de treinamento",qtd:7},
+        {nome:"Cabo VGA",qtd:15},{nome:"Cabo de Força",qtd:20},{nome:"Fonte Dell",qtd:5},
+        {nome:"Fonte HP",qtd:5},{nome:"Fonte Lenovo",qtd:5},{nome:"Desktop Dell",qtd:4},
+        {nome:"Desktop HP",qtd:4},{nome:"Desktop Lenovo",qtd:4},{nome:"CPU Dell",qtd:6},
+        {nome:"CPU HP",qtd:6},{nome:"CPU Lenovo",qtd:6}
+    ]; // fallback caso não exista no DB
+    carregarProdutos();
+    atualizarTabela();
+});
 
-  function continuar(){
-      usuario=document.getElementById("nome").value;
-      if(usuario==""){
-          alert("Digite seu nome!");
-          return;
-      }
-      tela1.classList.add("hidden");
-      tela2.classList.remove("hidden");
-      document.getElementById("usuario").innerText="Usuário: "+usuario;
-      carregarProdutosTela2();
-  }
+// Movimentações
+onValue(movRef, snapshot => {
+    movimentacoes = snapshot.val() || [];
+});
 
-  function carregarProdutosTela2(){
-      let div=document.getElementById("listaProdutos");
-      div.innerHTML="";
-      produtos.forEach((p,i)=>{
-          let d=document.createElement("div");
-          d.className="product";
-          d.innerText=p.nome;
-          d.onclick=()=>selecionar(i,d);
-          if(selecionados.includes(i)) d.classList.add("selected");
-          div.appendChild(d);
-      });
-  }
+// FUNÇÕES PARA ATUALIZAR FIREBASE
+function salvarProdutosFirebase(){
+    set(produtosRef, produtos);
+}
 
-  function selecionar(i,div){
-      if(selecionados.includes(i)){
-          selecionados = selecionados.filter(x=>x!=i);
-          div.classList.remove("selected");
-      } else {
-          selecionados.push(i);
-          div.classList.add("selected");
-      }
-  }
+function registrarMovFirebase(acao,produto,qtd,obs){
+    let data=new Date().toLocaleString();
+    movimentacoes.push({usuario,produto,acao,qtd,obs,data});
+    set(movRef, movimentacoes);
+}
 
-  function salvarProdutosFirebase(){
-      set(produtosRef, produtos);
-  }
+// ---- SOBREESCREVENDO FUNÇÕES ORIGINAIS PARA FIREBASE ----
+window.continuar = function(){
+    usuario=document.getElementById("nome").value;
+    if(usuario==""){
+        alert("Digite seu nome!");
+        return;
+    }
+    tela1.classList.add("hidden");
+    tela2.classList.remove("hidden");
+    document.getElementById("usuario").innerText="Usuário: "+usuario;
+    carregarProdutos();
+}
 
-  function registrarMov(acao, produto, qtd, obs){
-      let data = new Date().toLocaleString();
-      movimentacoes.push({usuario, produto, acao, qtd, obs, data});
-      set(movRef, movimentacoes);
-  }
+function carregarProdutos(){
+    let div=document.getElementById("listaProdutos");
+    div.innerHTML="";
+    produtos.forEach((p,i)=>{
+        let d=document.createElement("div");
+        d.className="product";
+        d.innerText=p.nome;
+        d.onclick=()=>selecionar(i,d);
+        div.appendChild(d);
+    });
+}
 
-  function retirar(){
-      if(selecionados.length==0){
-          alert("Selecione um produto");
-          return;
-      }
-      selecionados.forEach(i=>{
-          let qtd;
-          while(true){
-              qtd = prompt(Quantos ${produtos[i].nome} irá retirar?);
-              if(qtd===null) return;
-              if(isNaN(qtd) || qtd.trim()==="") alert("Somente números são aceitos!");
-              else { qtd=parseInt(qtd); break; }
-          }
-          let obs = prompt(Observação para ${produtos[i].nome} (opcional):) || "";
-          if(produtos[i].qtd >= qtd){
-              produtos[i].qtd -= qtd;
-              salvarProdutosFirebase();
-              registrarMov("Retirada", produtos[i].nome, qtd, obs);
-          } else alert("Estoque insuficiente: "+produtos[i].nome);
-      });
-      selecionados=[];
-      carregarProdutosTela2();
-  }
+function selecionar(i,div){
+    if(selecionados.includes(i)){
+        selecionados=selecionados.filter(x=>x!=i);
+        div.classList.remove("selected");
+    }else{
+        selecionados.push(i);
+        div.classList.add("selected");
+    }
+}
 
-  function devolver(){
-      if(selecionados.length==0){
-          alert("Selecione um produto");
-          return;
-      }
-      selecionados.forEach(i=>{
-          let qtd;
-          while(true){
-              qtd = prompt(Quantos ${produtos[i].nome} irá devolver?);
-              if(qtd===null) return;
-              if(isNaN(qtd) || qtd.trim()==="") alert("Somente números são aceitos!");
-              else { qtd=parseInt(qtd); break; }
-          }
-          let obs = prompt(Observação para ${produtos[i].nome} (opcional):) || "";
-          produtos[i].qtd += qtd;
-          salvarProdutosFirebase();
-          registrarMov("Devolução", produtos[i].nome, qtd, obs);
-      });
-      selecionados=[];
-      carregarProdutosTela2();
-  }
+window.retirar = function(){
+    if(selecionados.length==0){alert("Selecione um produto"); return;}
+    selecionados.forEach(i=>{
+        let qtd;
+        while(true){
+            qtd = prompt(`Quantos ${produtos[i].nome} irá retirar?`);
+            if(qtd===null) return;
+            if(isNaN(qtd) || qtd.trim()===""){alert("Somente números são aceitos!");}
+            else { qtd=parseInt(qtd); break; }
+        }
+        let obs = prompt(`Observação para ${produtos[i].nome} (opcional):`) || "";
+        if(produtos[i].qtd >= qtd){
+            produtos[i].qtd -= qtd;
+            salvarProdutosFirebase();
+            registrarMovFirebase("Retirada",produtos[i].nome,qtd,obs);
+        }else{alert("Estoque insuficiente: "+produtos[i].nome);}
+    });
+    selecionados=[];
+    carregarProdutos();
+}
 
-  function verEstoque(){
-      tela2.classList.add("hidden");
-      tela3.classList.remove("hidden");
-      atualizarTabela();
-  }
+window.devolver = function(){
+    if(selecionados.length==0){alert("Selecione um produto"); return;}
+    selecionados.forEach(i=>{
+        let qtd;
+        while(true){
+            qtd = prompt(`Quantos ${produtos[i].nome} irá devolver?`);
+            if(qtd===null) return;
+            if(isNaN(qtd) || qtd.trim()===""){alert("Somente números são aceitos!");}
+            else { qtd=parseInt(qtd); break; }
+        }
+        let obs = prompt(`Observação para ${produtos[i].nome} (opcional):`) || "";
+        produtos[i].qtd += qtd;
+        salvarProdutosFirebase();
+        registrarMovFirebase("Devolução",produtos[i].nome,qtd,obs);
+    });
+    selecionados=[];
+    carregarProdutos();
+}
 
-  function atualizarTabela(){
-      let tbody=document.getElementById("estoque");
-      tbody.innerHTML="";
-      produtos.forEach(p=>{
-          tbody.innerHTML+=<tr><td>${p.nome}</td><td>${p.qtd}</td></tr>;
-      });
-  }
+window.verEstoque = function(){
+    tela2.classList.add("hidden");
+    tela3.classList.remove("hidden");
+    atualizarTabela();
+}
 
-  function abrirEdicao(){
-      tela3.classList.add("hidden");
-      telaEditar.classList.remove("hidden");
+function atualizarTabela(){
+    let tbody=document.getElementById("estoque");
+    tbody.innerHTML="";
+    produtos.forEach(p=>{
+        tbody.innerHTML+=`<tr><td>${p.nome}</td><td>${p.qtd}</td></tr>`;
+    });
+}
 
-      let select=document.getElementById("produtoSelecionado");
-      let remove=document.getElementById("produtoRemover");
+window.abrirEdicao = function(){
+    tela3.classList.add("hidden");
+    telaEditar.classList.remove("hidden");
+    let select=document.getElementById("produtoSelecionado");
+    let remove=document.getElementById("produtoRemover");
+    select.innerHTML=""; remove.innerHTML="";
+    produtos.forEach((p,i)=>{
+        let opt=document.createElement("option"); opt.value=i; opt.text=p.nome; select.appendChild(opt);
+        let opt2=opt.cloneNode(true); remove.appendChild(opt2);
+    });
+}
 
-      select.innerHTML="";
-      remove.innerHTML="";
+window.salvarEdicao = function(){
+    let i=document.getElementById("produtoSelecionado").value;
+    let qtd=document.getElementById("novaQtd").value;
+    produtos[i].qtd=parseInt(qtd);
+    salvarProdutosFirebase();
+    atualizarTabela();
+    cancelarEdicao();
+}
 
-      produtos.forEach((p,i)=>{
-          let opt=document.createElement("option");
-          opt.value=i;
-          opt.text=p.nome;
-          select.appendChild(opt);
+window.adicionarProduto = function(){
+    let nome=document.getElementById("novoProdutoNome").value;
+    let qtd=document.getElementById("novoProdutoQtd").value;
+    if(nome==""||qtd==""){alert("Preencha os campos"); return;}
+    produtos.push({nome,qtd:parseInt(qtd)});
+    salvarProdutosFirebase();
+    alert("Produto adicionado!");
+    carregarProdutos();
+    abrirEdicao();
+}
 
-          let opt2=opt.cloneNode(true);
-          remove.appendChild(opt2);
-      });
-  }
+window.removerProduto = function(){
+    let i=document.getElementById("produtoRemover").value;
+    if(confirm("Deseja remover este produto?")){
+        produtos.splice(i,1);
+        salvarProdutosFirebase();
+        carregarProdutos();
+        abrirEdicao();
+        atualizarTabela();
+    }
+}
 
-  function salvarEdicao(){
-      let i=document.getElementById("produtoSelecionado").value;
-      let qtd=document.getElementById("novaQtd").value;
-      produtos[i].qtd=parseInt(qtd);
-      salvarProdutosFirebase();
-      atualizarTabela();
-      cancelarEdicao();
-  }
+window.cancelarEdicao = function(){
+    telaEditar.classList.add("hidden");
+    tela3.classList.remove("hidden");
+}
 
-  function adicionarProduto(){
-      let nome=document.getElementById("novoProdutoNome").value;
-      let qtd=document.getElementById("novoProdutoQtd").value;
-      if(nome==""||qtd==""){alert("Preencha os campos");return;}
-      produtos.push({nome,qtd:parseInt(qtd)});
-      salvarProdutosFirebase();
-      alert("Produto adicionado!");
-      carregarProdutosTela2();
-      abrirEdicao();
-  }
+window.verMovimentacoes = function(){
+    tela2.classList.add("hidden");
+    telaMov.classList.remove("hidden");
+    let tb=document.getElementById("listaMov");
+    tb.innerHTML="";
+    movimentacoes.forEach(m=>{
+        tb.innerHTML+=`<tr>
+            <td>${m.usuario}</td>
+            <td>${m.produto}</td>
+            <td>${m.acao}</td>
+            <td>${m.qtd}</td>
+            <td>${m.obs}</td>
+            <td>${m.data}</td>
+        </tr>`;
+    });
+}
 
-  function removerProduto(){
-      let i=document.getElementById("produtoRemover").value;
-      if(confirm("Deseja remover este produto?")){
-          produtos.splice(i,1);
-          salvarProdutosFirebase();
-          carregarProdutosTela2();
-          abrirEdicao();
-          atualizarTabela();
-      }
-  }
+window.voltarMov = function(){ telaMov.classList.add("hidden"); tela2.classList.remove("hidden"); }
+window.voltar = function(){ tela3.classList.add("hidden"); tela2.classList.remove("hidden"); }
 
-  function cancelarEdicao(){
-      telaEditar.classList.add("hidden");
-      tela3.classList.remove("hidden");
-  }
-
-  function verMovimentacoes(){
-      tela2.classList.add("hidden");
-      telaMov.classList.remove("hidden");
-
-      let tb=document.getElementById("listaMov");
-      tb.innerHTML="";
-      movimentacoes.forEach(m=>{
-          tb.innerHTML+=`
-          <tr>
-              <td>${m.usuario}</td>
-              <td>${m.produto}</td>
-              <td>${m.acao}</td>
-              <td>${m.qtd}</td>
-              <td>${m.obs}</td>
-              <td>${m.data}</td>
-          </tr>`;
-      });
-  }
-
-  function voltarMov(){
-      telaMov.classList.add("hidden");
-      tela2.classList.remove("hidden");
-  }
-
-  function voltar(){
-      tela3.classList.add("hidden");
-      tela2.classList.remove("hidden");
-  }
-
+} // fim window.onload
 </script>
 </body>
 </html>
