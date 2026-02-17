@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sistema de Estoque</title>
+<title>Sistema de Estoque - Firebase</title>
 
 <style>
 body{
@@ -12,7 +12,6 @@ body{
     background: linear-gradient(135deg,#6a0dad,#00c896,#007bff);
     min-height:100vh;
 }
-
 .container{
     background:white;
     margin:20px;
@@ -20,14 +19,8 @@ body{
     border-radius:30px;
     box-shadow:0 0 15px rgba(0,0,0,0.2);
 }
-
-h2,h3{
-    color:#6a0dad;
-    text-align:center;
-}
-
+h2,h3{color:#6a0dad;text-align:center;}
 .hidden{display:none;}
-
 input, button, select{
     width:100%;
     padding:12px;
@@ -36,21 +29,13 @@ input, button, select{
     border-radius:25px;
     border:none;
 }
-
-input, select{
-    border:2px solid #6a0dad;
-}
-
+input, select{border:2px solid #6a0dad;}
 button{
     background:#6a0dad;
     color:white;
     font-weight:bold;
 }
-
-button:hover{
-    background:#00c896;
-}
-
+button:hover{background:#00c896;}
 .products{
     display:grid;
     grid-template-columns:repeat(2,1fr);
@@ -59,7 +44,6 @@ button:hover{
     overflow-y:auto;
     margin-top:15px;
 }
-
 .product{
     border:3px solid #007bff;
     border-radius:25px 5px 25px 5px;
@@ -69,23 +53,19 @@ button:hover{
     color:#6a0dad;
     font-weight:bold;
 }
-
 .product.selected{
     background:#e6fff6;
     border-color:#00c896;
 }
-
 table{
     width:100%;
     border-collapse:collapse;
     margin-top:10px;
 }
-
 th{
     background:#6a0dad;
     color:white;
 }
-
 td,th{
     border:1px solid #ccc;
     padding:8px;
@@ -93,7 +73,6 @@ td,th{
 }
 </style>
 </head>
-
 <body>
 
 <div class="container" id="tela1">
@@ -160,235 +139,234 @@ td,th{
     <button onclick="voltarMov()">Voltar</button>
 </div>
 
-<script>
-let usuario="";
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-app.js";
+  import { getDatabase, ref, set, get, onValue, push } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-database.js";
 
-let produtos=[
-    {nome:"Mouse",qtd:10},
-    {nome:"Teclado",qtd:8},
-    {nome:"Monitor",qtd:5},
-    {nome:"Notebook",qtd:3},
-    {nome:"Headset",qtd:7},
-    {nome:"Headset de treinamento",qtd:7},
-    {nome:"Cabo VGA",qtd:15},
-    {nome:"Cabo de Força",qtd:20},
-    {nome:"Fonte Dell",qtd:5},
-    {nome:"Fonte HP",qtd:5},
-    {nome:"Fonte Lenovo",qtd:5},
-    {nome:"Desktop Dell",qtd:4},
-    {nome:"Desktop HP",qtd:4},
-    {nome:"Desktop Lenovo",qtd:4},
-    {nome:"CPU Dell",qtd:6},
-    {nome:"CPU HP",qtd:6},
-    {nome:"CPU Lenovo",qtd:6}
-];
+  // Substitua pelas suas credenciais do Firebase
+  const firebaseConfig = {
+    apiKey: "SUA_API_KEY",
+    authDomain: "SEU_PROJETO.firebaseapp.com",
+    databaseURL: "https://SEU_PROJETO.firebaseio.com",
+    projectId: "SEU_PROJETO",
+    storageBucket: "SEU_PROJETO.appspot.com",
+    messagingSenderId: "SENDER_ID",
+    appId: "APP_ID"
+  };
 
-let selecionados=[];
-let movimentacoes=[];
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
 
-function continuar(){
-    usuario=document.getElementById("nome").value;
-    if(usuario==""){
-        alert("Digite seu nome!");
-        return;
-    }
-    tela1.classList.add("hidden");
-    tela2.classList.remove("hidden");
-    document.getElementById("usuario").innerText="Usuário: "+usuario;
-    carregarProdutos();
-}
+  let usuario="";
+  let produtos=[];
+  let selecionados=[];
+  let movimentacoes=[];
 
-function carregarProdutos(){
-    let div=document.getElementById("listaProdutos");
-    div.innerHTML="";
-    produtos.forEach((p,i)=>{
-        let d=document.createElement("div");
-        d.className="product";
-        d.innerText=p.nome;
-        d.onclick=()=>selecionar(i,d);
-        div.appendChild(d);
-    });
-}
+  // Carregar produtos e movimentações do Firebase em tempo real
+  const produtosRef = ref(db, 'produtos');
+  onValue(produtosRef, (snapshot) => {
+      produtos = snapshot.val() || [];
+      carregarProdutosTela2();
+      atualizarTabela();
+  });
 
-function selecionar(i,div){
-    if(selecionados.includes(i)){
-        selecionados=selecionados.filter(x=>x!=i);
-        div.classList.remove("selected");
-    }else{
-        selecionados.push(i);
-        div.classList.add("selected");
-    }
-}
+  const movRef = ref(db, 'movimentacoes');
+  onValue(movRef, (snapshot)=>{
+      movimentacoes = snapshot.val() || [];
+  });
 
-function retirar(){
-    if(selecionados.length==0){
-        alert("Selecione um produto");
-        return;
-    }
+  function continuar(){
+      usuario=document.getElementById("nome").value;
+      if(usuario==""){
+          alert("Digite seu nome!");
+          return;
+      }
+      tela1.classList.add("hidden");
+      tela2.classList.remove("hidden");
+      document.getElementById("usuario").innerText="Usuário: "+usuario;
+      carregarProdutosTela2();
+  }
 
-    selecionados.forEach(i=>{
-        let qtd;
-        while(true){
-            qtd = prompt(`Quantos ${produtos[i].nome} irá retirar?`);
-            if(qtd===null) return;
+  function carregarProdutosTela2(){
+      let div=document.getElementById("listaProdutos");
+      div.innerHTML="";
+      produtos.forEach((p,i)=>{
+          let d=document.createElement("div");
+          d.className="product";
+          d.innerText=p.nome;
+          d.onclick=()=>selecionar(i,d);
+          if(selecionados.includes(i)) d.classList.add("selected");
+          div.appendChild(d);
+      });
+  }
 
-            if(isNaN(qtd) || qtd.trim()===""){
-                alert("Somente números são aceitos!");
-            } else {
-                qtd=parseInt(qtd);
-                break;
-            }
-        }
+  function selecionar(i,div){
+      if(selecionados.includes(i)){
+          selecionados = selecionados.filter(x=>x!=i);
+          div.classList.remove("selected");
+      } else {
+          selecionados.push(i);
+          div.classList.add("selected");
+      }
+  }
 
-        let obs = prompt(`Observação para ${produtos[i].nome} (opcional):`) || "";
+  function salvarProdutosFirebase(){
+      set(produtosRef, produtos);
+  }
 
-        if(produtos[i].qtd >= qtd){
-            produtos[i].qtd -= qtd;
-            registrarMov("Retirada",produtos[i].nome,qtd,obs);
-        }else{
-            alert("Estoque insuficiente: "+produtos[i].nome);
-        }
-    });
+  function registrarMov(acao, produto, qtd, obs){
+      let data = new Date().toLocaleString();
+      movimentacoes.push({usuario, produto, acao, qtd, obs, data});
+      set(movRef, movimentacoes);
+  }
 
-    selecionados=[];
-    carregarProdutos();
-}
+  function retirar(){
+      if(selecionados.length==0){
+          alert("Selecione um produto");
+          return;
+      }
+      selecionados.forEach(i=>{
+          let qtd;
+          while(true){
+              qtd = prompt(Quantos ${produtos[i].nome} irá retirar?);
+              if(qtd===null) return;
+              if(isNaN(qtd) || qtd.trim()==="") alert("Somente números são aceitos!");
+              else { qtd=parseInt(qtd); break; }
+          }
+          let obs = prompt(Observação para ${produtos[i].nome} (opcional):) || "";
+          if(produtos[i].qtd >= qtd){
+              produtos[i].qtd -= qtd;
+              salvarProdutosFirebase();
+              registrarMov("Retirada", produtos[i].nome, qtd, obs);
+          } else alert("Estoque insuficiente: "+produtos[i].nome);
+      });
+      selecionados=[];
+      carregarProdutosTela2();
+  }
 
-function devolver(){
-    if(selecionados.length==0){
-        alert("Selecione um produto");
-        return;
-    }
+  function devolver(){
+      if(selecionados.length==0){
+          alert("Selecione um produto");
+          return;
+      }
+      selecionados.forEach(i=>{
+          let qtd;
+          while(true){
+              qtd = prompt(Quantos ${produtos[i].nome} irá devolver?);
+              if(qtd===null) return;
+              if(isNaN(qtd) || qtd.trim()==="") alert("Somente números são aceitos!");
+              else { qtd=parseInt(qtd); break; }
+          }
+          let obs = prompt(Observação para ${produtos[i].nome} (opcional):) || "";
+          produtos[i].qtd += qtd;
+          salvarProdutosFirebase();
+          registrarMov("Devolução", produtos[i].nome, qtd, obs);
+      });
+      selecionados=[];
+      carregarProdutosTela2();
+  }
 
-    selecionados.forEach(i=>{
-        let qtd;
-        while(true){
-            qtd = prompt(`Quantos ${produtos[i].nome} irá devolver?`);
-            if(qtd===null) return;
+  function verEstoque(){
+      tela2.classList.add("hidden");
+      tela3.classList.remove("hidden");
+      atualizarTabela();
+  }
 
-            if(isNaN(qtd) || qtd.trim()===""){
-                alert("Somente números são aceitos!");
-            } else {
-                qtd=parseInt(qtd);
-                break;
-            }
-        }
+  function atualizarTabela(){
+      let tbody=document.getElementById("estoque");
+      tbody.innerHTML="";
+      produtos.forEach(p=>{
+          tbody.innerHTML+=<tr><td>${p.nome}</td><td>${p.qtd}</td></tr>;
+      });
+  }
 
-        let obs = prompt(`Observação para ${produtos[i].nome} (opcional):`) || "";
+  function abrirEdicao(){
+      tela3.classList.add("hidden");
+      telaEditar.classList.remove("hidden");
 
-        produtos[i].qtd += qtd;
-        registrarMov("Devolução",produtos[i].nome,qtd,obs);
-    });
+      let select=document.getElementById("produtoSelecionado");
+      let remove=document.getElementById("produtoRemover");
 
-    selecionados=[];
-    carregarProdutos();
-}
+      select.innerHTML="";
+      remove.innerHTML="";
 
-function registrarMov(acao,produto,qtd,obs){
-    let data=new Date().toLocaleString();
-    movimentacoes.push({usuario,produto,acao,qtd,obs,data});
-}
+      produtos.forEach((p,i)=>{
+          let opt=document.createElement("option");
+          opt.value=i;
+          opt.text=p.nome;
+          select.appendChild(opt);
 
-function verEstoque(){
-    tela2.classList.add("hidden");
-    tela3.classList.remove("hidden");
-    atualizarTabela();
-}
+          let opt2=opt.cloneNode(true);
+          remove.appendChild(opt2);
+      });
+  }
 
-function atualizarTabela(){
-    let tbody=document.getElementById("estoque");
-    tbody.innerHTML="";
-    produtos.forEach(p=>{
-        tbody.innerHTML+=`<tr><td>${p.nome}</td><td>${p.qtd}</td></tr>`;
-    });
-}
+  function salvarEdicao(){
+      let i=document.getElementById("produtoSelecionado").value;
+      let qtd=document.getElementById("novaQtd").value;
+      produtos[i].qtd=parseInt(qtd);
+      salvarProdutosFirebase();
+      atualizarTabela();
+      cancelarEdicao();
+  }
 
-function abrirEdicao(){
-    tela3.classList.add("hidden");
-    telaEditar.classList.remove("hidden");
+  function adicionarProduto(){
+      let nome=document.getElementById("novoProdutoNome").value;
+      let qtd=document.getElementById("novoProdutoQtd").value;
+      if(nome==""||qtd==""){alert("Preencha os campos");return;}
+      produtos.push({nome,qtd:parseInt(qtd)});
+      salvarProdutosFirebase();
+      alert("Produto adicionado!");
+      carregarProdutosTela2();
+      abrirEdicao();
+  }
 
-    let select=document.getElementById("produtoSelecionado");
-    let remove=document.getElementById("produtoRemover");
+  function removerProduto(){
+      let i=document.getElementById("produtoRemover").value;
+      if(confirm("Deseja remover este produto?")){
+          produtos.splice(i,1);
+          salvarProdutosFirebase();
+          carregarProdutosTela2();
+          abrirEdicao();
+          atualizarTabela();
+      }
+  }
 
-    select.innerHTML="";
-    remove.innerHTML="";
+  function cancelarEdicao(){
+      telaEditar.classList.add("hidden");
+      tela3.classList.remove("hidden");
+  }
 
-    produtos.forEach((p,i)=>{
-        let opt=document.createElement("option");
-        opt.value=i;
-        opt.text=p.nome;
-        select.appendChild(opt);
+  function verMovimentacoes(){
+      tela2.classList.add("hidden");
+      telaMov.classList.remove("hidden");
 
-        let opt2=opt.cloneNode(true);
-        remove.appendChild(opt2);
-    });
-}
+      let tb=document.getElementById("listaMov");
+      tb.innerHTML="";
+      movimentacoes.forEach(m=>{
+          tb.innerHTML+=`
+          <tr>
+              <td>${m.usuario}</td>
+              <td>${m.produto}</td>
+              <td>${m.acao}</td>
+              <td>${m.qtd}</td>
+              <td>${m.obs}</td>
+              <td>${m.data}</td>
+          </tr>`;
+      });
+  }
 
-function salvarEdicao(){
-    let i=document.getElementById("produtoSelecionado").value;
-    let qtd=document.getElementById("novaQtd").value;
-    produtos[i].qtd=parseInt(qtd);
-    atualizarTabela();
-    cancelarEdicao();
-}
+  function voltarMov(){
+      telaMov.classList.add("hidden");
+      tela2.classList.remove("hidden");
+  }
 
-function adicionarProduto(){
-    let nome=document.getElementById("novoProdutoNome").value;
-    let qtd=document.getElementById("novoProdutoQtd").value;
+  function voltar(){
+      tela3.classList.add("hidden");
+      tela2.classList.remove("hidden");
+  }
 
-    if(nome==""||qtd==""){alert("Preencha os campos");return;}
-
-    produtos.push({nome,qtd:parseInt(qtd)});
-    alert("Produto adicionado!");
-
-    carregarProdutos();
-    abrirEdicao();
-}
-
-function removerProduto(){
-    let i=document.getElementById("produtoRemover").value;
-    if(confirm("Deseja remover este produto?")){
-        produtos.splice(i,1);
-        carregarProdutos();
-        abrirEdicao();
-        atualizarTabela();
-    }
-}
-
-function cancelarEdicao(){
-    telaEditar.classList.add("hidden");
-    tela3.classList.remove("hidden");
-}
-
-function verMovimentacoes(){
-    tela2.classList.add("hidden");
-    telaMov.classList.remove("hidden");
-
-    let tb=document.getElementById("listaMov");
-    tb.innerHTML="";
-    movimentacoes.forEach(m=>{
-        tb.innerHTML+=`
-        <tr>
-            <td>${m.usuario}</td>
-            <td>${m.produto}</td>
-            <td>${m.acao}</td>
-            <td>${m.qtd}</td>
-            <td>${m.obs}</td>
-            <td>${m.data}</td>
-        </tr>`;
-    });
-}
-
-function voltarMov(){
-    telaMov.classList.add("hidden");
-    tela2.classList.remove("hidden");
-}
-
-function voltar(){
-    tela3.classList.add("hidden");
-    tela2.classList.remove("hidden");
-}
 </script>
-
 </body>
 </html>
